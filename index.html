@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>แผงผังความคิด</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2f6f7;--card:#fff;--ink:#17252f;--mute:#5d6d79;--line:#cfd9df;--acc:#1b6b8f;--onacc:#fff;--sel:#e8a100;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10181d;--card:#19242b;--ink:#e6edf1;--mute:#93a3ae;--line:#2c3b45;--acc:#58b4d9;--onacc:#07202b;--sel:#f2b01e;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10181d;--card:#19242b;--ink:#e6edf1;--mute:#93a3ae;--line:#2c3b45;--acc:#58b4d9;--onacc:#07202b;--sel:#f2b01e;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.45 'TH Sarabun New','Sarabun',sans-serif}
+input,select,textarea,button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}button.p,.tabs button.on{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
+:focus-visible{outline:3px solid var(--sel);outline-offset:1px}
+.top,.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px 4px}
+h1{font-size:26px;margin:0 10px 0 0}.m{color:var(--mute);font-size:16px}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:12px;padding:8px 16px 16px}
+.stage,.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;min-width:0}
+.panel{padding:12px;align-self:start}
+.tabs{display:flex;gap:6px;padding:8px;border-bottom:1px solid var(--line);align-items:center}.sp{flex:1}
+#cv,#tl{height:64vh;overflow:auto}#tl{padding:4px 12px}svg{user-select:none;display:block}
+.it{padding:8px 4px;border-bottom:1px solid var(--line);cursor:pointer}.chip{font-weight:700;font-size:15px}
+label{display:block;font-size:15px;color:var(--mute);margin:8px 0 2px}
+.panel input,.panel textarea,.panel select{width:100%}.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0 8px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;display:none;max-width:90vw}
+@media(max-width:860px){.main{grid-template-columns:1fr}}
+</style></head><body>
+<div class="top"><h1>แผงผังความคิด</h1>
+<select id="bs" aria-label="เลือกแผง" onchange="S.cur=this.value;S.sel=curB().root;armed=null;save();renderAll()"></select>
+<button class="p" onclick="nb()">+ แผงใหม่</button><button id="bd" onclick="dboard()">ลบแผง</button>
+<button onclick="$('#imp').click()">นำเข้า JSON</button><button onclick="$('#ghp').hidden=!$('#ghp').hidden">ซิงก์ GitHub</button><span id="st" class="m"></span><input id="imp" type="file" accept=".json,application/json" hidden onchange="imp(this)"></div>
+<section id="ghp" class="panel" hidden style="margin:8px 16px"><b>เชื่อมต่อ GitHub (ใช้ร่วมกันหลายคน)</b>
+<label>Repo เก็บข้อมูล (owner/ชื่อ)</label><input id="g-repo" placeholder="myteam/meeting-data">
+<label>Branch</label><input id="g-br" placeholder="main"><label>ไฟล์ข้อมูล</label><input id="g-path" placeholder="data/mindmap.json">
+<label>โทเคน (Fine-grained, สิทธิ์ Contents: Read and write)</label><input id="g-token" type="password" autocomplete="off">
+<label>ชื่อที่แสดงเมื่อแก้ไข</label><input id="g-name"><div class="row"><button class="p" onclick="gsave()">เชื่อมต่อและซิงก์</button><button onclick="sync()">ซิงก์ตอนนี้</button><button onclick="gout()">ตัดการเชื่อมต่อ</button></div></section>
+<div class="bar">
+<input id="fq" type="search" placeholder="ค้นหาข้อความหรือหมวดหมู่" oninput="F.q=this.value;renderStage()">
+<select id="fc" aria-label="หมวดหมู่" onchange="F.cat=this.value;renderStage()"></select>
+<label style="margin:0">ตั้งแต่</label><input type="date" oninput="F.a=this.value;renderStage()">
+<label style="margin:0">ถึง</label><input type="date" oninput="F.b=this.value;renderStage()">
+<button onclick="clr()">ล้างตัวกรอง</button><span id="cnt" class="m"></span></div>
+<div class="main"><section class="stage">
+<div class="tabs"><button id="tm" onclick="view='map';renderStage()">แผนผัง</button><button id="tt" onclick="view='tl';renderStage()">ไทม์ไลน์</button><span class="sp"></span>
+<button onclick="zm(-.1)" aria-label="ซูมออก">−</button><button onclick="zm(.1)" aria-label="ซูมเข้า">+</button></div>
+<div id="cv"></div><div id="tl" hidden></div></section>
+<aside class="panel" id="panel"></aside></div>
+<div id="toast" role="status"></div>
+<script>
+const LV=['แผง','การประชุม','หัวข้อ','ประเด็น','งานที่ต้องทำ'],PAL=['#2a7de1','#e0752d','#2f9e6b','#a55eea','#d6336c','#0f9d9a','#b8860b','#6c757d'],
+MO=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],NW=210,GX=60,GY=12,PAD=24;
+let S,G=null,dirty=0,busy=0,sd=0,t3,tp,view='map',zoom=1,F={q:'',cat:'',a:'',b:''},armed=null,t1,t2;
+const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),
+uid=()=>sd?'s'+sd++:'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),lvl=d=>d<5?LV[d]:'รายละเอียดย่อย',
+cc=c=>c?PAL[[...c].reduce((a,x)=>a+x.charCodeAt(0),0)%PAL.length]:'#8a94a0',
+fd=dt=>{const d=new Date(dt);return !dt||isNaN(d)?'':d.getDate()+' '+MO[d.getMonth()]+' '+(d.getFullYear()+543)+(dt.length>10?' '+dt.slice(11,16)+' น.':'')},
+nowStr=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)},
+act=()=>F.q||F.cat||F.a||F.b,curB=()=>S.boards.find(b=>b.id===S.cur)||S.boards[0];
+function mk(B,p,t,dt,cat){const id=uid();B.nodes[id]={id,t,dt:dt||'',cat:cat||'',p,c:[],col:0,u:Date.now(),o:Date.now()+Math.random(),by:me()};if(p)B.nodes[p].c.push(id);return id}
+function newBoard(name){const B={id:uid(),name,nodes:{},root:null,del:{}};B.root=mk(B,null,name);return B}
+function seed(){sd=1;const B=newBoard('ตัวอย่าง: โครงการ A'),m=mk(B,B.root,'ประชุมทีมประจำสัปดาห์','2026-10-19T10:00','ประชุม'),
+t=mk(B,m,'งบประมาณ','2026-10-19T10:00','การเงิน'),i=mk(B,t,'งบไตรมาส 4 เกินแผน','2026-10-19T10:00','การเงิน');
+mk(B,i,'ปรับแผนค่าใช้จ่ายส่งฝ่ายบัญชี','2026-10-24T17:00','การเงิน');
+const t2=mk(B,m,'กำหนดการเปิดตัว','2026-10-19T10:00','งานหลัก');mk(B,mk(B,t2,'ทดสอบยังไม่เสร็จ','2026-10-19T10:00','งานหลัก'),'เลื่อนเปิดตัวไปเดือนหน้า','2026-10-26T12:00','งานหลัก');
+sd=0;return{boards:[B],cur:B.id,sel:B.root,del:{}}}
+const depth=(B,id)=>{let d=0;while(B.nodes[id].p){id=B.nodes[id].p;d++}return d},
+cnt=(B,id)=>B.nodes[id].c.reduce((a,k)=>a+1+cnt(B,k),0),
+sids=(B,id)=>[id].concat(...B.nodes[id].c.map(k=>sids(B,k))),
+cats=B=>[...new Set(Object.values(B.nodes).map(n=>n.cat).filter(Boolean))].sort();
+function match(n){if(!act())return true;if(!n.p)return false;const d=n.dt.slice(0,10);
+return (!F.q||(n.t+' '+n.cat).toLowerCase().includes(F.q.toLowerCase()))&&(!F.cat||n.cat===F.cat)&&(!F.a||(d&&d>=F.a))&&(!F.b||(d&&d<=F.b))}
+function wrap(t){const N=17,o=[];let c='';const push=()=>{if(c){o.push(c);c=''}};
+for(let w of (String(t||'').trim()||'(ว่าง)').split(/\s+/)){while(w.length>N){let i=N;while(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/.test(w[i]||''))i++;push();o.push(w.slice(0,i));w=w.slice(i)}
+if(c&&(c+' '+w).length>N)push();c=c?c+' '+w:w}
+push();if(o.length>3){o.length=3;o[2]=o[2].slice(0,N-1)+'…'}return o}
+function sub(B,id,ig){const n=B.nodes[id],ks=(n.col&&!ig)?[]:n.c.map(k=>sub(B,k,ig)),ls=wrap(n.t),
+nh=14+ls.length*19+(n.dt?17:0)+(n.cat?17:0),kh=ks.reduce((a,k)=>a+k.H,0)+GY*Math.max(ks.length-1,0);return{n,ks,ls,nh,kh,H:Math.max(nh,kh)}}
+function place(s,x,y){s.x=x;s.y=y+(s.H-s.nh)/2;let yy=y+(s.H-s.kh)/2;s.ks.forEach(k=>{place(k,x+NW+GX,yy);yy+=k.H+GY})}
+function draw(B,rid,X){const ig=X||!!act(),s=sub(B,rid,ig),L=[];place(s,PAD,PAD);(function f(a){L.push(a);a.ks.forEach(f)})(s);
+const w=Math.max(...L.map(a=>a.x))+NW+PAD,h=s.H+2*PAD,
+K=X?{bg:'#fff',card:'#f7f9fa',ink:'#17252f',mute:'#5d6d79',line:'#c3cfd6',acc:'#1b6b8f',sel:'#e8a100'}:{bg:'transparent',card:'var(--card)',ink:'var(--ink)',mute:'var(--mute)',line:'var(--line)',acc:'var(--acc)',sel:'var(--sel)'};
+let M=null,A=null;if(!X&&act()){M=new Set();A=new Set();Object.values(B.nodes).forEach(n=>{if(match(n)){M.add(n.id);let p=n.p;while(p){A.add(p);p=B.nodes[p].p}}})}
+const vis=id=>!M||M.has(id)||A.has(id);let o='';
+L.forEach(a=>a.ks.forEach(k=>{const x1=a.x+NW,y1=a.y+a.nh/2,x2=k.x,y2=k.y+k.nh/2,mx=(x1+x2)/2;
+o+=`<path d="M${x1} ${y1}C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}" fill="none" stroke="${cc(k.n.cat)}" stroke-width="2" opacity="${vis(k.n.id)?.75:.15}"/>`}));
+L.forEach(a=>{const n=a.n,m=M&&M.has(n.id),sel=!X&&S.sel===n.id,op=M?(m?1:A.has(n.id)?.6:.25):1;
+o+=`<g data-id="${n.id}" style="cursor:pointer;opacity:${op}"><rect x="${a.x}" y="${a.y}" width="${NW}" height="${a.nh}" rx="9" style="fill:${K.card};stroke:${sel?K.sel:m?K.acc:K.line};stroke-width:${sel||m?3:1.3}"/><rect x="${a.x}" y="${a.y+6}" width="5" height="${a.nh-12}" rx="2.5" style="fill:${cc(n.cat)}"/>`;
+a.ls.forEach((l,i)=>o+=`<text x="${a.x+16}" y="${a.y+22+i*19}" style="fill:${K.ink};font-size:16px;font-weight:${a===s?700:400}">${esc(l)}</text>`);
+let y=a.y+20+a.ls.length*19;
+if(n.dt){o+=`<text x="${a.x+16}" y="${y}" style="fill:${K.mute};font-size:13px">${esc(fd(n.dt))}</text>`;y+=17}
+if(n.cat)o+=`<text x="${a.x+16}" y="${y}" style="fill:${cc(n.cat)};font-size:13px;font-weight:700">${esc(n.cat)}</text>`;
+o+='</g>';
+if(!X&&n.col&&n.c.length)o+=`<g data-tog="${n.id}" style="cursor:pointer"><circle cx="${a.x+NW}" cy="${a.y+a.nh/2}" r="12" style="fill:${K.acc}"/><text x="${a.x+NW}" y="${a.y+a.nh/2+4}" text-anchor="middle" style="fill:var(--onacc);font-size:11px;font-weight:700">+${cnt(B,n.id)}</text></g>`});
+const zw=X?w:w*zoom,zh=X?h:h*zoom;
+return{w,h,svg:`<svg xmlns="http://www.w3.org/2000/svg" width="${zw}" height="${zh}" viewBox="0 0 ${w} ${h}" style="font-family:'TH Sarabun New','Sarabun',sans-serif">${X?`<rect width="${w}" height="${h}" fill="#fff"/>`:''}${o}</svg>`}}
+function load(){try{S=JSON.parse(localStorage.getItem('mm-v1'))}catch(e){}
+if(!S||!Array.isArray(S.boards)||!S.boards.length)S=seed();S.cur=curB().id;if(!curB().nodes[S.sel])S.sel=curB().root}
+function save(d=1){try{localStorage.setItem('mm-v1',JSON.stringify(S))}catch(e){}if(d&&G){dirty=1;clearTimeout(t3);t3=setTimeout(sync,2500)}}
+function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t2);t2=setTimeout(()=>t.style.display='none',2800)}
+function renderAll(){renderTop();fillCats();renderStage();renderPanel()}
+function renderTop(){$('#bs').innerHTML=S.boards.map(b=>`<option value="${b.id}"${b.id===S.cur?' selected':''}>${esc(b.name)}</option>`).join('');
+$('#bd').textContent=armed==='board'?'กดอีกครั้งเพื่อลบแผง':'ลบแผง';$('#bd').hidden=S.boards.length<2}
+function fillCats(){const c=cats(curB());if(F.cat&&!c.includes(F.cat))F.cat='';
+$('#fc').innerHTML='<option value="">ทุกหมวดหมู่</option>'+c.map(x=>`<option value="${esc(x)}"${x===F.cat?' selected':''}>${esc(x)}</option>`).join('')}
+function renderStage(){const B=curB(),mp=view==='map';$('#tm').className=mp?'on':'';$('#tt').className=mp?'':'on';$('#cv').hidden=!mp;$('#tl').hidden=mp;
+if(mp)$('#cv').innerHTML=draw(B,B.root,false).svg;else{
+const L=Object.values(B.nodes).filter(n=>n.p&&n.dt&&match(n)).sort((a,b)=>a.dt<b.dt?-1:a.dt>b.dt?1:0);
+$('#tl').innerHTML=L.length?L.map(n=>{const p=[];let q=n.p;while(q&&B.nodes[q].p){p.unshift(B.nodes[q].t);q=B.nodes[q].p}
+return `<div class="it" onclick="pick('${n.id}',1)"><span class="m">${esc(fd(n.dt))}</span> <span class="chip" style="color:${cc(n.cat)}">${esc(n.cat)}</span><div>${esc(n.t)}</div><div class="m">${esc(p.join(' › '))}</div></div>`}).join(''):'<p class="m">ไม่มีรายการที่ตรงกับตัวกรอง</p>'}
+$('#cnt').textContent=act()?'พบ '+Object.values(B.nodes).filter(n=>n.p&&match(n)).length+' รายการ':''}
+function renderPanel(){const B=curB(),n=B.nodes[S.sel]||B.nodes[B.root];S.sel=n.id;const d=depth(B,n.id),root=!n.p;
+$('#panel').innerHTML=`<b style="font-size:21px">${root?'ชื่อแผง':lvl(d)}</b>
+<label>${root?'ชื่อแผง':'ข้อความ'}</label><textarea id="ft" rows="${root?1:3}" oninput="upd('t',this.value)">${esc(n.t)}</textarea>
+${root?'':`<label>วันเวลา</label><input type="datetime-local" value="${esc(n.dt)}" oninput="upd('dt',this.value)"><label>หมวดหมู่</label><input list="cats" value="${esc(n.cat)}" oninput="upd('cat',this.value)" placeholder="เช่น การเงิน, บุคคล">`}
+<datalist id="cats">${cats(B).map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+<div class="row"><button class="p" onclick="add(1)">+ ${lvl(d+1)}</button>${root?'':`<button onclick="add(0)">+ ${lvl(d)} (ระดับเดียวกัน)</button>`}${n.c.length?`<button onclick="tog('${n.id}')">${n.col?'ขยายกิ่ง':'ยุบกิ่ง'}</button>`:''}${root?'':`<button onclick="del()">${armed===n.id?'กดอีกครั้งเพื่อลบ'+(n.c.length?' (รวม '+cnt(B,n.id)+' รายการย่อย)':''):'ลบ'}</button>`}</div>
+<hr><b>ส่งออก</b><label>ส่วนที่ส่งออก</label><select id="scope"><option value="sel">กิ่งที่เลือก: ${esc(n.t.slice(0,24))}</option><option value="all">ทั้งแผง</option></select>
+<div class="row">${['svg','png','pdf','json'].map(f=>`<button onclick="ex('${f}')">${f.toUpperCase()}</button>`).join('')}</div>${n.by?`<p class="m">แก้ล่าสุดโดย ${esc(n.by)}</p>`:''}`}
+function pick(id,go){S.sel=id;armed=null;if(go)view='map';renderAll();if(go){const g=$(`[data-id="${id}"]`);if(g)g.scrollIntoView({block:'center',inline:'center'})}}
+function upd(k,v){const B=curB(),n=B.nodes[S.sel];n[k]=v;n.u=Date.now();n.by=me();if(!n.p)B.name=v;save();renderStage();if(!n.p)renderTop();if(k==='cat')fillCats()}
+function add(kid){const B=curB(),n=B.nodes[S.sel],par=kid?n:B.nodes[n.p],d=depth(B,par.id)+1;
+const id=mk(B,par.id,lvl(d)+' ใหม่',d===1?nowStr():par.dt,par.cat);par.col=0;S.sel=id;armed=null;save();renderAll();const t=$('#ft');t.focus();t.select()}
+function tog(id){const n=curB().nodes[id];n.col=n.col?0:1;save(0);renderAll()}
+function del(){const B=curB(),n=B.nodes[S.sel];if(!n.p)return;
+if(armed!==n.id){armed=n.id;clearTimeout(t1);t1=setTimeout(()=>{armed=null;renderPanel()},3500);renderPanel();return}
+const ids=sids(B,n.id);B.nodes[n.p].c=B.nodes[n.p].c.filter(k=>k!==n.id);ids.forEach(i=>{delete B.nodes[i];B.del[i]=Date.now()});S.sel=n.p;armed=null;save();renderAll()}
+function nb(){const B=newBoard('แผงใหม่ '+(S.boards.length+1));mk(B,B.root,'การประชุมใหม่',nowStr());S.boards.push(B);S.cur=B.id;S.sel=B.root;armed=null;save();renderAll();const t=$('#ft');t.focus();t.select()}
+function dboard(){if(S.boards.length<2)return;
+if(armed!=='board'){armed='board';clearTimeout(t1);t1=setTimeout(()=>{armed=null;renderTop()},3500);renderTop();return}
+S.del[S.cur]=Date.now();S.boards=S.boards.filter(b=>b.id!==S.cur);S.cur=S.boards[0].id;S.sel=S.boards[0].root;armed=null;save();renderAll()}
+function clr(){F={q:'',cat:'',a:'',b:''};document.querySelectorAll('.bar input').forEach(i=>i.value='');renderAll()}
+function zm(d){zoom=Math.min(2,Math.max(.4,zoom+d));renderStage()}
+function imp(inp){const f=inp.files[0];if(!f)return;f.text().then(t=>{try{const j=JSON.parse(t);if(j.v!==1||!Array.isArray(j.nodes)||!j.root)throw 0;
+const B={id:uid(),name:'',nodes:{},root:j.root};j.nodes.forEach(n=>B.nodes[n.id]={id:n.id,t:String(n.t||''),dt:n.dt||'',cat:n.cat||'',p:n.p||null,c:Array.isArray(n.c)?n.c:[],col:n.col?1:0});
+if(!B.nodes[B.root])throw 0;Object.values(B.nodes).forEach(n=>n.c=n.c.filter(k=>B.nodes[k]));B.nodes[B.root].p=null;B.name=B.nodes[B.root].t||j.board||'นำเข้า';
+S.boards.push(B);S.cur=B.id;S.sel=B.root;save();renderAll();toast('นำเข้าแล้ว')}catch(e){toast('ไฟล์ JSON ไม่ถูกต้อง')}});inp.value=''}
+function out(name,data){const a=document.createElement('a');a.href=URL.createObjectURL(data instanceof Blob?data:new Blob([data]));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('ดาวน์โหลดแล้ว')}
+function pdf(jpg,w,h,pw,ph){const enc=new TextEncoder(),P=[],off=[];let len=0;const add=b=>{if(typeof b==='string')b=enc.encode(b);P.push(b);len+=b.length},o=(n,s)=>{off[n]=len;add(n+' 0 obj\n'+s)};
+pw=pw.toFixed(1);ph=ph.toFixed(1);add('%PDF-1.4\n');
+o(1,'<</Type/Catalog/Pages 2 0 R>>\nendobj\n');o(2,'<</Type/Pages/Kids[3 0 R]/Count 1>>\nendobj\n');
+o(3,`<</Type/Page/Parent 2 0 R/MediaBox[0 0 ${pw} ${ph}]/Resources<</XObject<</I 4 0 R>>>>/Contents 5 0 R>>\nendobj\n`);
+off[4]=len;add(`4 0 obj\n<</Type/XObject/Subtype/Image/Width ${w}/Height ${h}/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ${jpg.length}>>\nstream\n`);add(jpg);add('\nendstream\nendobj\n');
+const cs=`q ${pw} 0 0 ${ph} 0 0 cm /I Do Q`;o(5,`<</Length ${cs.length}>>\nstream\n${cs}\nendstream\nendobj\n`);
+const x=len;add('xref\n0 6\n0000000000 65535 f \n'+[1,2,3,4,5].map(n=>String(off[n]).padStart(10,'0')+' 00000 n \n').join(''));add(`trailer\n<</Size 6/Root 1 0 R>>\nstartxref\n${x}\n%%EOF`);
+const all=new Uint8Array(len);let p=0;P.forEach(b=>{all.set(b,p);p+=b.length});return all}
+async function ex(f){const B=curB(),all=$('#scope').value==='all',rid=all?B.root:S.sel,base=(B.name+(all?'':'-'+B.nodes[rid].t)).replace(/[\\\/:*?"<>|\s]+/g,'_').slice(0,60);
+if(f==='json'){const ids=sids(B,rid);return out(base+'.json',JSON.stringify({v:1,type:'mindmap',board:B.name,exportedAt:new Date().toISOString(),root:rid,nodes:ids.map(i=>({...B.nodes[i],p:i===rid?null:B.nodes[i].p}))},null,1))}
+const r=draw(B,rid,true);if(f==='svg')return out(base+'.svg','<?xml version="1.0" encoding="UTF-8"?>\n'+r.svg);
+const k=Math.min(2,7000/Math.max(r.w,r.h)),cv=document.createElement('canvas'),img=new Image();cv.width=Math.round(r.w*k);cv.height=Math.round(r.h*k);
+try{await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(r.svg)})}catch(e){return toast('สร้างภาพไม่สำเร็จ')}
+const c=cv.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,cv.width,cv.height);c.drawImage(img,0,0,cv.width,cv.height);
+if(f==='png')return cv.toBlob(b=>b?out(base+'.png',b):toast('สร้างภาพไม่สำเร็จ'),'image/png');
+const j=atob(cv.toDataURL('image/jpeg',.92).split(',')[1]);out(base+'.pdf',pdf(Uint8Array.from(j,ch=>ch.charCodeAt(0)),cv.width,cv.height,r.w*.75,r.h*.75))}
+
+const b64=s=>{let x='';new TextEncoder().encode(s).forEach(b=>x+=String.fromCharCode(b));return btoa(x)},
+unb=c=>new TextDecoder().decode(Uint8Array.from(atob(c.replace(/\s/g,'')),ch=>ch.charCodeAt(0))),
+me=()=>G?G.name:'',setSt=m=>$('#st').textContent=m,
+mx=(p,q)=>{const r={...p};for(const k in q)r[k]=Math.max(r[k]||0,q[k]);return r},
+H=()=>({Authorization:'Bearer '+G.token,Accept:'application/vnd.github+json'}),
+U=()=>`https://api.github.com/repos/${G.repo}/contents/${G.path}`;
+function norm(){S.del=S.del||{};S.boards.forEach(B=>{B.del=B.del||{};Object.values(B.nodes).forEach(n=>{n.u=n.u||1;n.c.forEach((k,i)=>{if(B.nodes[k]&&B.nodes[k].o==null)B.nodes[k].o=i})});const r=B.nodes[B.root];if(r&&r.o==null)r.o=0})}
+function mergeB(a,b){const del=mx(a.del||{},b.del||{}),N={};
+new Set([...Object.keys(a.nodes),...Object.keys(b.nodes)]).forEach(id=>{const x=a.nodes[id],y=b.nodes[id],w=!y?x:!x?y:((y.u||0)>(x.u||0)?y:x);if(del[id]&&del[id]>=(w.u||0))return;N[id]={...w,c:[],col:x?x.col:0}});
+for(let ch=1;ch;){ch=0;for(const id in N)if(N[id].p&&!N[N[id].p]){delete N[id];ch=1}}
+Object.values(N).forEach(n=>n.p&&N[n.p].c.push(n.id));
+for(const id in N)N[id].c.sort((p,q)=>((N[p].o||0)-(N[q].o||0))||(p<q?-1:1));
+return{id:a.id,name:N[a.root]?N[a.root].t:a.name,nodes:N,root:a.root,del}}
+function mergeS(R){const del=mx(S.del||{},R.del||{}),m={};S.boards.forEach(b=>m[b.id]=b);
+(R.boards||[]).forEach(b=>{m[b.id]=m[b.id]?mergeB(m[b.id],b):b});S.del=del;S.boards=Object.values(m).filter(b=>!del[b.id]);
+if(!S.boards.length){const B=newBoard('แผงใหม่');mk(B,B.root,'การประชุมใหม่',nowStr());S.boards=[B]}
+norm();if(!S.boards.find(b=>b.id===S.cur))S.cur=S.boards[0].id;if(!curB().nodes[S.sel])S.sel=curB().root}
+function renderSafe(){renderTop();fillCats();renderStage();if(!document.activeElement||!document.activeElement.closest('#panel'))renderPanel()}
+async function sync(){if(!G||busy)return;busy=1;clearTimeout(t3);let ok=1;
+try{for(let i=0;i<3;i++){setSt('กำลังซิงก์…');
+const r=await fetch(U()+'?ref='+encodeURIComponent(G.br)+'&t='+Date.now(),{headers:H(),cache:'no-store'});let sha,j=null;
+if(r.ok){j=await r.json();sha=j.sha;if(!j.content)throw new Error('ไฟล์ข้อมูลใหญ่เกิน 1MB');if(sha!==G.sha){mergeS(JSON.parse(unb(j.content)));G.sha=sha;save(0);renderSafe()}}
+else if(r.status!==404)throw new Error(r.status===401?'โทเคนไม่ถูกต้องหรือหมดอายุ':'GitHub '+r.status);
+if(!dirty&&j)break;
+const p=await fetch(U(),{method:'PUT',headers:H(),body:JSON.stringify({message:'mindmap: '+G.name,content:b64(JSON.stringify({v:2,boards:S.boards,del:S.del})),branch:G.br,...(sha?{sha}:{})})});
+if(p.ok){G.sha=(await p.json()).content.sha;dirty=0;break}
+if(p.status===409||p.status===422)continue;
+throw new Error(p.status===404?'ไม่พบ repo/branch หรือไม่มีสิทธิ์เขียน':'GitHub '+p.status)}
+setSt('ซิงก์แล้ว '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})+(dirty?' (ยังมีรายการรอส่ง)':''))}
+catch(e){ok=0;setSt('ซิงก์ไม่สำเร็จ: '+e.message)}
+busy=0;if(ok&&dirty)t3=setTimeout(sync,4000)}
+function connect(){let c;try{c=JSON.parse(localStorage.getItem('mm-gh'))}catch(e){}
+clearInterval(tp);if(c&&c.repo&&c.token){G={...c,sha:''};['repo','br','path','token','name'].forEach(k=>{const e=$('#g-'+k);if(e)e.value=c[k]||''});sync();tp=setInterval(()=>{if(!document.hidden)sync()},15000)}
+else setSt('ยังไม่เชื่อมต่อ GitHub (ข้อมูลอยู่ในเครื่องนี้เท่านั้น)')}
+function gsave(){const c={repo:$('#g-repo').value.trim(),br:$('#g-br').value.trim()||'main',path:$('#g-path').value.trim()||'data/mindmap.json',token:$('#g-token').value.trim(),name:$('#g-name').value.trim()||'ไม่ระบุชื่อ'};
+if(!/^[\w.-]+\/[\w.-]+$/.test(c.repo)||!c.token)return toast('กรอก repo เป็น owner/ชื่อ และใส่โทเคน');
+try{localStorage.setItem('mm-gh',JSON.stringify(c))}catch(e){toast('เบราว์เซอร์ไม่ยอมเก็บค่าเชื่อมต่อ')}
+dirty=1;connect();$('#ghp').hidden=true}
+function gout(){try{localStorage.removeItem('mm-gh')}catch(e){}G=null;clearInterval(tp);$('#g-token').value='';setSt('ตัดการเชื่อมต่อแล้ว (ข้อมูลยังอยู่ในเครื่องนี้)')}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+$('#cv').addEventListener('click',e=>{const t=e.target.closest('[data-tog]');if(t)return tog(t.getAttribute('data-tog'));const g=e.target.closest('[data-id]');if(g)pick(g.getAttribute('data-id'))});
+load();norm();renderAll();
+connect();
+</script></body></html>
